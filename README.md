@@ -278,8 +278,7 @@ This project is proprietary software for UrbanCrew.
 
 ## 👥 Support
 
-For support, contact:
-- WhatsApp: +91 9306512657
+
 - Email: support@urbancrew.com
 
 ## 🔄 Version History
