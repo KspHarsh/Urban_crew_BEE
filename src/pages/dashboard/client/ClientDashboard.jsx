@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc } from 'firebase/firestore';
-import { db } from '../../../services/firebase';
+import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import DashboardLayout from '../../../components/dashboard/DashboardLayout';
 import StatsCard from '../../../components/dashboard/StatsCard';
@@ -22,22 +21,11 @@ const ClientDashboard = () => {
 
     const fetchClientData = async () => {
         try {
-            // Fetch client's requests
-            const requestsSnapshot = await getDocs(collection(db, 'requests'));
-            const clientRequests = requestsSnapshot.docs
-                .filter(doc => doc.data().clientId === currentUser.uid)
-                .map(doc => ({ id: doc.id, ...doc.data() }));
-
-            const pendingCount = clientRequests.filter(r => r.status === 'new' || r.status === 'approved').length;
-            const assignedCount = clientRequests.filter(r => r.status === 'assigned').length;
-
-            setStats({
-                activeStaff: assignedCount,
-                pendingRequests: pendingCount,
-                totalRequests: clientRequests.length
-            });
-
-            setRequests(clientRequests.slice(0, 5)); // Show latest 5
+            const response = await api.get('/client/dashboard');
+            if (response.data.success) {
+                setStats(response.data.stats);
+                setRequests(response.data.requests || []);
+            }
         } catch (error) {
             console.error('Error fetching client data:', error);
         } finally {
@@ -128,7 +116,7 @@ const ClientDashboard = () => {
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         {requests.map((request) => (
-                            <div key={request.id} style={{
+                            <div key={request._id} style={{
                                 padding: '16px',
                                 border: '1px solid #e5e7eb',
                                 borderRadius: '8px',

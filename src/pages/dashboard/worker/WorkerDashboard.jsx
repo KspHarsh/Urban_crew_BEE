@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../../../services/firebase';
+import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import DashboardLayout from '../../../components/dashboard/DashboardLayout';
 import StatsCard from '../../../components/dashboard/StatsCard';
@@ -16,24 +15,9 @@ const WorkerDashboard = () => {
 
     const fetchWorkerData = async () => {
         try {
-            // Fetch current assignment
-            const assignmentsSnapshot = await getDocs(collection(db, 'assignments'));
-            const currentAssignment = assignmentsSnapshot.docs.find(
-                doc => doc.data().workerId === currentUser.uid && doc.data().status === 'active'
-            );
-
-            if (currentAssignment) {
-                const assignmentData = currentAssignment.data();
-
-                // Fetch client info
-                const clientsSnapshot = await getDocs(collection(db, 'clients'));
-                const client = clientsSnapshot.docs.find(c => c.id === assignmentData.clientId);
-
-                setAssignment({
-                    id: currentAssignment.id,
-                    ...assignmentData,
-                    clientName: client?.data()?.organizationName || 'Unknown'
-                });
+            const response = await api.get('/worker/dashboard');
+            if (response.data.success && response.data.assignment) {
+                setAssignment(response.data.assignment);
             }
         } catch (error) {
             console.error('Error fetching worker data:', error);

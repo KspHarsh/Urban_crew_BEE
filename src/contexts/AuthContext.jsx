@@ -1,14 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import {
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    signOut,
-    onAuthStateChanged,
-    sendPasswordResetEmail,
-    updateProfile
-} from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../services/firebase';
+import api from '../services/api';
 import { ROLES } from '../utils/constants';
 import toast from 'react-hot-toast';
 
@@ -30,55 +21,35 @@ export const AuthProvider = ({ children }) => {
     // Register new user
     const register = async (email, password, userData) => {
         try {
-            const { user } = await createUserWithEmailAndPassword(auth, email, password);
-
-            // Update display name
-            await updateProfile(user, {
-                displayName: userData.name
-            });
-
-            // Create user document in Firestore
-            await setDoc(doc(db, 'users', user.uid), {
-                uid: user.uid,
-                email: email,
+            const response = await api.post('/auth/register', {
                 name: userData.name,
+                email,
+                password,
                 phone: userData.phone,
                 role: userData.role,
-                createdAt: new Date(),
-                isActive: true // Auto-activate all users
+                // Client-specific fields
+                organizationName: userData.organizationName,
+                organizationType: userData.organizationType,
+                location: userData.location,
+                address: userData.address,
+                // Worker-specific fields
+                skills: userData.skills,
+                experience: userData.experience,
+                idProof: userData.idProof
             });
 
-            // Create role-specific document
-            if (userData.role === ROLES.CLIENT) {
-                await setDoc(doc(db, 'clients', user.uid), {
-                    userId: user.uid,
-                    organizationName: userData.organizationName,
-                    organizationType: userData.organizationType,
-                    location: userData.location,
-                    contactPerson: userData.name,
-                    address: userData.address || '',
-                    registeredAt: new Date(),
-                    isBlocked: false
-                });
-            } else if (userData.role === ROLES.WORKER) {
-                await setDoc(doc(db, 'workers', user.uid), {
-                    userId: user.uid,
-                    skills: userData.skills || [],
-                    experience: userData.experience || '',
-                    idProof: userData.idProof || '',
-                    uniformIssued: false,
-                    isAvailable: true,
-                    currentAssignment: null,
-                    joinedAt: new Date(),
-                    status: 'approved' // Auto-approved
-                });
-            }
+            const { token, user } = response.data;
+
+            // Store token and user in localStorage
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', JSON.stringify(user));
 
             toast.success('Registration successful! You can now login.');
             return user;
         } catch (error) {
             console.error('Registration error:', error);
-            toast.error(error.message);
+            const message = error.response?.data?.message || error.message;
+            toast.error(message);
             throw error;
         }
     };
@@ -86,38 +57,32 @@ export const AuthProvider = ({ children }) => {
     // Login user
     const login = async (email, password) => {
         try {
-            const { user } = await signInWithEmailAndPassword(auth, email, password);
+            const response = await api.post('/auth/login', { email, password });
 
-            // Check if user is active
-            const userDoc = await getDoc(doc(db, 'users', user.uid));
-            if (userDoc.exists()) {
-                const userData = userDoc.data();
-                if (!userData.isActive) {
-                    await signOut(auth);
-                    toast.error('Your account is pending approval. Please contact admin.');
-                    throw new Error('Account not active');
-                }
-            } else {
-                // User authenticated but no Firestore document
-                console.warn('User authenticated but no Firestore document found. Creating one...');
-                // This shouldn't happen in normal flow, but handle it gracefully
-                toast.error('User profile not found. Please contact support.');
-                throw new Error('User profile not found');
-            }
+            const { token, user } = response.data;
+
+            // Store token and user in localStorage
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', JSON.stringify(user));
+
+            // Update state
+            setCurrentUser(user);
+            setUserRole(user.role);
 
             toast.success('Login successful!');
             return user;
         } catch (error) {
             console.error('Login error:', error);
-            // Show more specific error messages
-            if (error.code === 'auth/user-not-found') {
+            const message = error.response?.data?.message || error.message;
+
+            if (message.includes('No account found')) {
                 toast.error('No account found with this email.');
-            } else if (error.code === 'auth/wrong-password') {
+            } else if (message.includes('Incorrect password')) {
                 toast.error('Incorrect password.');
-            } else if (error.code === 'auth/invalid-email') {
-                toast.error('Invalid email address.');
-            } else if (error.message !== 'Account not active') {
-                toast.error(error.message);
+            } else if (message.includes('pending approval')) {
+                toast.error('Your account is pending approval. Please contact admin.');
+            } else {
+                toast.error(message);
             }
             throw error;
         }
@@ -126,9 +91,20 @@ export const AuthProvider = ({ children }) => {
     // Logout user
     const logout = async () => {
         try {
-            await signOut(auth);
+            // Call logout API to clear server session/cookie
+            try {
+                await api.post('/auth/logout');
+            } catch (e) {
+                // Ignore API errors on logout
+            }
+
+            // Clear local storage
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+
             setCurrentUser(null);
             setUserRole(null);
+
             toast.success('Logged out successfully');
         } catch (error) {
             console.error('Logout error:', error);
@@ -137,11 +113,10 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Reset password
+    // Reset password (simplified — just shows message)
     const resetPassword = async (email) => {
         try {
-            await sendPasswordResetEmail(auth, email);
-            toast.success('Password reset email sent!');
+            toast.success('Please contact admin to reset your password.');
         } catch (error) {
             console.error('Password reset error:', error);
             toast.error(error.message);
@@ -157,9 +132,9 @@ export const AuthProvider = ({ children }) => {
     // Get user role-specific data
     const getUserData = async (uid) => {
         try {
-            const userDoc = await getDoc(doc(db, 'users', uid));
-            if (userDoc.exists()) {
-                return userDoc.data();
+            const response = await api.get('/auth/me');
+            if (response.data.success) {
+                return response.data.user;
             }
             return null;
         } catch (error) {
@@ -168,24 +143,38 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Listen to auth state changes
+    // Check for existing token on mount (replaces onAuthStateChanged)
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                setCurrentUser(user);
-                // Fetch user role from Firestore
-                const userData = await getUserData(user.uid);
-                if (userData) {
-                    setUserRole(userData.role);
+        const checkAuth = async () => {
+            const token = localStorage.getItem('token');
+            const storedUser = localStorage.getItem('user');
+
+            if (token && storedUser) {
+                try {
+                    // Verify token is still valid by calling /me
+                    const response = await api.get('/auth/me');
+                    if (response.data.success) {
+                        const user = response.data.user;
+                        setCurrentUser(user);
+                        setUserRole(user.role);
+                    } else {
+                        // Token invalid, clear storage
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                    }
+                } catch (error) {
+                    console.error('Auth check failed:', error);
+                    // Token expired or invalid
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    setCurrentUser(null);
+                    setUserRole(null);
                 }
-            } else {
-                setCurrentUser(null);
-                setUserRole(null);
             }
             setLoading(false);
-        });
+        };
 
-        return unsubscribe;
+        checkAuth();
     }, []);
 
     const value = {

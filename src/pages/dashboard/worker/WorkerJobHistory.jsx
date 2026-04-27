@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../../../services/firebase';
+import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import DashboardLayout from '../../../components/dashboard/DashboardLayout';
 import StatusBadge from '../../../components/common/StatusBadge';
-import { formatDistanceToNow } from 'date-fns';
 
 const WorkerJobHistory = () => {
     const { currentUser } = useAuth();
@@ -17,48 +15,10 @@ const WorkerJobHistory = () => {
 
     const fetchJobHistory = async () => {
         try {
-            const assignmentsSnapshot = await getDocs(
-                query(collection(db, 'assignments'), where('workerId', '==', currentUser.uid))
-            );
-
-            const clientsSnapshot = await getDocs(collection(db, 'clients'));
-            const clientsMap = {};
-            clientsSnapshot.docs.forEach(doc => {
-                clientsMap[doc.id] = doc.data();
-            });
-
-            const jobsData = assignmentsSnapshot.docs.map(doc => {
-                const data = doc.data();
-                const client = clientsMap[data.clientId];
-
-                // Calculate duration
-                let duration = 'Ongoing';
-                if (data.startDate && data.endDate) {
-                    const start = data.startDate.toDate();
-                    const end = data.endDate.toDate();
-                    const months = Math.round((end - start) / (1000 * 60 * 60 * 24 * 30));
-                    duration = `${months} month${months !== 1 ? 's' : ''}`;
-                } else if (data.startDate) {
-                    const start = data.startDate.toDate();
-                    duration = formatDistanceToNow(start, { addSuffix: false });
-                }
-
-                return {
-                    id: doc.id,
-                    ...data,
-                    clientName: client?.organizationName || 'Unknown',
-                    organizationType: client?.organizationType || 'N/A',
-                    duration
-                };
-            });
-
-            // Sort by start date (newest first)
-            jobsData.sort((a, b) => {
-                if (!a.startDate || !b.startDate) return 0;
-                return b.startDate.toDate() - a.startDate.toDate();
-            });
-
-            setJobs(jobsData);
+            const response = await api.get('/worker/jobs');
+            if (response.data.success) {
+                setJobs(response.data.jobs);
+            }
         } catch (error) {
             console.error('Error fetching job history:', error);
         } finally {
@@ -111,7 +71,7 @@ const WorkerJobHistory = () => {
                             </thead>
                             <tbody>
                                 {jobs.map((job) => (
-                                    <tr key={job.id}>
+                                    <tr key={job._id}>
                                         <td>
                                             <div>
                                                 <div style={{ fontWeight: '600', color: 'var(--white)' }}>

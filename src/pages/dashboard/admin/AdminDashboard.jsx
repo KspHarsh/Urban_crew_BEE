@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../../../services/firebase';
+import api from '../../../services/api';
 import DashboardLayout from '../../../components/dashboard/DashboardLayout';
 import StatsCard from '../../../components/dashboard/StatsCard';
 import { REQUEST_STATUS, WORKER_STATUS } from '../../../utils/constants';
@@ -21,35 +20,10 @@ const AdminDashboard = () => {
 
     const fetchStats = async () => {
         try {
-            // Fetch clients
-            const clientsSnapshot = await getDocs(collection(db, 'clients'));
-            const totalClients = clientsSnapshot.size;
-
-            // Fetch workers
-            const workersSnapshot = await getDocs(collection(db, 'workers'));
-            const totalWorkers = workersSnapshot.size;
-
-            // Count pending worker approvals
-            const pendingWorkers = workersSnapshot.docs.filter(
-                doc => doc.data().status === WORKER_STATUS.PENDING
-            ).length;
-
-            // Fetch requests
-            const requestsSnapshot = await getDocs(collection(db, 'requests'));
-            const totalRequests = requestsSnapshot.size;
-
-            // Count active jobs
-            const activeJobs = requestsSnapshot.docs.filter(
-                doc => doc.data().status === REQUEST_STATUS.ASSIGNED || doc.data().status === REQUEST_STATUS.APPROVED
-            ).length;
-
-            setStats({
-                totalClients,
-                totalWorkers,
-                totalRequests,
-                activeJobs,
-                pendingApprovals: pendingWorkers
-            });
+            const response = await api.get('/admin/dashboard');
+            if (response.data.success) {
+                setStats(response.data.stats);
+            }
         } catch (error) {
             console.error('Error fetching stats:', error);
         } finally {

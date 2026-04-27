@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { collection, addDoc } from 'firebase/firestore';
-import { db } from '../../../services/firebase';
+import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../../components/dashboard/DashboardLayout';
@@ -18,17 +17,12 @@ const CreateRequest = () => {
         try {
             setLoading(true);
 
-            await addDoc(collection(db, 'requests'), {
-                clientId: currentUser.uid,
+            await api.post('/client/request', {
                 serviceType: data.serviceType,
                 numberOfWorkers: parseInt(data.numberOfWorkers),
                 location: data.location,
                 duration: data.duration,
-                notes: data.notes || '',
-                status: 'new',
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                assignedWorkers: []
+                notes: data.notes || ''
             });
 
             toast.success('Request created successfully!');

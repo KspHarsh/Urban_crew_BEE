@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '../../../services/firebase';
+import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import DashboardLayout from '../../../components/dashboard/DashboardLayout';
 import toast from 'react-hot-toast';
@@ -17,9 +16,9 @@ const WorkerAvailability = () => {
 
     const fetchWorkerData = async () => {
         try {
-            const workerDoc = await getDoc(doc(db, 'workers', currentUser.uid));
-            if (workerDoc.exists()) {
-                setWorkerData({ id: workerDoc.id, ...workerDoc.data() });
+            const response = await api.get('/worker/dashboard');
+            if (response.data.success) {
+                setWorkerData(response.data.worker);
             }
         } catch (error) {
             console.error('Error fetching worker data:', error);
@@ -32,14 +31,12 @@ const WorkerAvailability = () => {
     const toggleAvailability = async () => {
         try {
             setUpdating(true);
-            const newStatus = !workerData.isAvailable;
 
-            await updateDoc(doc(db, 'workers', currentUser.uid), {
-                isAvailable: newStatus
-            });
-
-            setWorkerData({ ...workerData, isAvailable: newStatus });
-            toast.success(`You are now marked as ${newStatus ? 'Available' : 'Unavailable'}`);
+            const response = await api.put('/worker/availability');
+            if (response.data.success) {
+                setWorkerData({ ...workerData, isAvailable: response.data.isAvailable });
+                toast.success(response.data.message);
+            }
         } catch (error) {
             console.error('Error updating availability:', error);
             toast.error('Failed to update availability');

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../../services/firebase';
+import api from '../../../services/api';
 import DashboardLayout from '../../../components/dashboard/DashboardLayout';
 import StatusBadge from '../../../components/common/StatusBadge';
 import Modal from '../../../components/common/Modal';
@@ -27,33 +26,18 @@ const WorkerManagement = () => {
 
     const fetchData = async () => {
         try {
-            // Fetch workers
-            const workersSnapshot = await getDocs(collection(db, 'workers'));
-            const usersSnapshot = await getDocs(collection(db, 'users'));
+            // Fetch workers and clients in parallel
+            const [workersRes, clientsRes] = await Promise.all([
+                api.get('/admin/workers'),
+                api.get('/admin/clients')
+            ]);
 
-            const workersData = workersSnapshot.docs.map((workerDoc) => {
-                const workerData = workerDoc.data();
-                const user = usersSnapshot.docs.find(u => u.id === workerData.userId);
-
-                return {
-                    id: workerDoc.id,
-                    ...workerData,
-                    name: user?.data()?.name || 'Unknown',
-                    phone: user?.data()?.phone || 'N/A',
-                    email: user?.data()?.email || 'N/A',
-                    isActive: user?.data()?.isActive || false
-                };
-            });
-
-            // Fetch clients
-            const clientsSnapshot = await getDocs(collection(db, 'clients'));
-            const clientsData = clientsSnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-
-            setWorkers(workersData);
-            setClients(clientsData);
+            if (workersRes.data.success) {
+                setWorkers(workersRes.data.workers);
+            }
+            if (clientsRes.data.success) {
+                setClients(clientsRes.data.clients);
+            }
         } catch (error) {
             console.error('Error fetching data:', error);
             toast.error('Failed to load data');
@@ -66,7 +50,8 @@ const WorkerManagement = () => {
         try {
             const newStatus = !currentStatus;
 
-            await updateDoc(doc(db, 'users', userId), {
+            await api.put(`/admin/approve-worker/${userId}`, {
+                userId,
                 isActive: newStatus
             });
 
@@ -99,21 +84,13 @@ const WorkerManagement = () => {
         }
 
         try {
-            // Create assignment
-            await addDoc(collection(db, 'assignments'), {
-                workerId: selectedWorker.id,
+            await api.post('/admin/assign-worker', {
+                workerId: selectedWorker._id,
                 clientId: assignmentData.clientId,
                 workLocation: assignmentData.workLocation,
                 workingHours: assignmentData.workingHours,
                 salary: parseFloat(assignmentData.salary),
-                startDate: assignmentData.startDate ? new Date(assignmentData.startDate) : serverTimestamp(),
-                status: 'active',
-                createdAt: serverTimestamp()
-            });
-
-            // Update worker availability
-            await updateDoc(doc(db, 'workers', selectedWorker.id), {
-                isAvailable: false
+                startDate: assignmentData.startDate || undefined
             });
 
             toast.success('Worker assigned successfully!');
@@ -122,6 +99,19 @@ const WorkerManagement = () => {
         } catch (error) {
             console.error('Error assigning worker:', error);
             toast.error('Failed to assign worker');
+        }
+    };
+
+    const handleCompleteJob = async (assignmentId) => {
+        if (!window.confirm('Are you sure you want to mark this job as completed? The worker will become available for new assignments.')) return;
+        
+        try {
+            await api.put(`/admin/assignment/${assignmentId}/complete`);
+            toast.success('Job marked as completed! Worker is now available.');
+            fetchData();
+        } catch (error) {
+            console.error('Error completing job:', error);
+            toast.error('Failed to complete job');
         }
     };
 
@@ -166,7 +156,7 @@ const WorkerManagement = () => {
                             </thead>
                             <tbody>
                                 {workers.map((worker) => (
-                                    <tr key={worker.id}>
+                                    <tr key={worker._id}>
                                         <td>
                                             <div>
                                                 <div style={{ fontWeight: '600', color: 'var(--white)' }}>
@@ -224,9 +214,26 @@ const WorkerManagement = () => {
                                                     </button>
                                                 )}
 
+                                                {/* Complete Job Button */}
+                                                {!worker.isAvailable && worker.currentAssignment && (
+                                                    <button
+                                                        onClick={() => handleCompleteJob(worker.currentAssignment)}
+                                                        className="dashboard-btn-secondary"
+                                                        style={{
+                                                            padding: '6px 12px',
+                                                            fontSize: '13px',
+                                                            background: 'rgba(59, 130, 246, 0.1)',
+                                                            border: '1px solid #3b82f6',
+                                                            color: '#3b82f6'
+                                                        }}
+                                                    >
+                                                        <i className="fa-solid fa-check-double"></i> Complete Job
+                                                    </button>
+                                                )}
+
                                                 {/* Activate/Deactivate Button */}
                                                 <button
-                                                    onClick={() => toggleWorkerActive(worker.id, worker.userId, worker.isActive)}
+                                                    onClick={() => toggleWorkerActive(worker._id, worker.userId, worker.isActive)}
                                                     className="dashboard-btn-secondary"
                                                     style={{
                                                         padding: '6px 12px',
@@ -267,7 +274,7 @@ const WorkerManagement = () => {
                         >
                             <option value="">Choose a client...</option>
                             {clients.map(client => (
-                                <option key={client.id} value={client.id}>
+                                <option key={client._id} value={client.userId}>
                                     {client.organizationName} ({client.organizationType})
                                 </option>
                             ))}

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, doc, updateDoc, addDoc } from 'firebase/firestore';
-import { db } from '../../../services/firebase';
+import api from '../../../services/api';
 import DashboardLayout from '../../../components/dashboard/DashboardLayout';
 import StatusBadge from '../../../components/common/StatusBadge';
 import Modal from '../../../components/common/Modal';
@@ -19,22 +18,10 @@ const RequestManagement = () => {
 
     const fetchRequests = async () => {
         try {
-            const requestsSnapshot = await getDocs(collection(db, 'requests'));
-            const requestsData = await Promise.all(
-                requestsSnapshot.docs.map(async (requestDoc) => {
-                    const data = requestDoc.data();
-                    // Fetch client info
-                    const clientDoc = await getDocs(collection(db, 'clients'));
-                    const client = clientDoc.docs.find(c => c.id === data.clientId);
-
-                    return {
-                        id: requestDoc.id,
-                        ...data,
-                        clientName: client?.data()?.organizationName || 'Unknown'
-                    };
-                })
-            );
-            setRequests(requestsData);
+            const response = await api.get('/admin/requests');
+            if (response.data.success) {
+                setRequests(response.data.requests);
+            }
         } catch (error) {
             console.error('Error fetching requests:', error);
             toast.error('Failed to load requests');
@@ -45,10 +32,7 @@ const RequestManagement = () => {
 
     const updateRequestStatus = async (requestId, newStatus) => {
         try {
-            await updateDoc(doc(db, 'requests', requestId), {
-                status: newStatus,
-                updatedAt: new Date()
-            });
+            await api.put(`/admin/requests/${requestId}/status`, { status: newStatus });
             toast.success('Request status updated!');
             fetchRequests();
         } catch (error) {
@@ -95,7 +79,7 @@ const RequestManagement = () => {
                             </thead>
                             <tbody>
                                 {requests.map((request) => (
-                                    <tr key={request.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                    <tr key={request._id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                                         <td style={{ padding: '16px', fontSize: '14px' }}>{request.clientName}</td>
                                         <td style={{ padding: '16px', fontSize: '14px', textTransform: 'capitalize' }}>{request.serviceType}</td>
                                         <td style={{ padding: '16px', fontSize: '14px' }}>{request.numberOfWorkers}</td>
@@ -106,7 +90,7 @@ const RequestManagement = () => {
                                         <td style={{ padding: '16px' }}>
                                             <select
                                                 value={request.status}
-                                                onChange={(e) => updateRequestStatus(request.id, e.target.value)}
+                                                onChange={(e) => updateRequestStatus(request._id, e.target.value)}
                                                 style={{
                                                     padding: '6px 12px',
                                                     borderRadius: '6px',
