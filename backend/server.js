@@ -9,6 +9,7 @@ import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import MongoStore from 'connect-mongo';
 import mongoose from 'mongoose';
+import passport from 'passport';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -17,6 +18,7 @@ dotenv.config();
 
 // Database connection
 import connectDB from './config/db.js';
+import configurePassport from './config/passport.js';
 
 // Middleware imports
 import { loggerMiddleware } from './middleware/loggerMiddleware.js';
@@ -209,6 +211,10 @@ const startServer = async () => {
 
         // Attach session middleware only after a stable DB connection is available.
         app.use(createSessionMiddleware());
+
+        // Initialize Passport.js (Google OAuth)
+        configurePassport();
+        app.use(passport.initialize());
 
         // Ensure session middleware is mounted before route handlers.
         setupRoutesAndErrors();

@@ -17,13 +17,12 @@ export default function Footer() {
             support workers for schools, offices, hospitals, and societies. We manage attendance, salaries, and staff
             performance to ensure smooth operations and trusted service.
           </p>
-          <p style={{ color: 'var(--yellow)', fontWeight: 600, marginTop: 6 }}>WhatsApp • Instagram • LinkedIn</p>
+          <p style={{ color: 'var(--yellow)', fontWeight: 600, marginTop: 6 }}>Connect with us</p>
         </div>
         <div style={{ justifySelf: 'end', textAlign: 'right' }}>
           <div className="socials">
-            <a href="#">
-              <i class="fa-brands fa-whatsapp"></i>
-
+            <a href="#contact">
+              <i className="fa-solid fa-phone"></i>
             </a>
             <a href="#">
               <i className="fa-brands fa-instagram" />

@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import toast from 'react-hot-toast';
 import ServiceCard from '../../components/ServiceCard.jsx';
 
 
@@ -63,11 +66,27 @@ const contactHighlights = [
   { label: 'Response within 1 business hour', icon: 'fa-clock' },
   { label: 'Local teams with area familiarity', icon: 'fa-location-dot' },
   { label: 'Dedicated manager for every account', icon: 'fa-user-tie' },
-  { label: '24/7 WhatsApp support', icon: 'fa-headset' },
+  { label: '24/7 customer support', icon: 'fa-headset' },
 ];
 
 export default function Home() {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
+  const { currentUser, userRole } = useAuth();
+  const navigate = useNavigate();
+
+  const handleDashboardRedirect = () => {
+    if (!currentUser) {
+      toast.error('Please login or create an account first!');
+      navigate('/login');
+      return;
+    }
+    switch (userRole) {
+      case 'admin': navigate('/admin/dashboard'); break;
+      case 'client': navigate('/client/dashboard'); break;
+      case 'worker': navigate('/worker/dashboard'); break;
+      default: navigate('/dashboard');
+    }
+  };
 
   useEffect(() => {
     const interval = setInterval(
@@ -200,19 +219,12 @@ export default function Home() {
                 ))}
               </div>
               <div style={{ marginTop: 16 }}>
-                <button
-                  type="button"
+                <a
                   className="btn secondary"
-                  onClick={() =>
-                    window.open(
-                      "https://wa.me/919306512657?text=Hello%20UrbanCrew%20Team%2C%0A%0AI%20want%20to%20join%20as%20UrbanCrew.%0A%0AMy%20Onboarding%20Details%3A%0A1.%20Submit%20Name%20%2B%20ID%20Proof%20-%20(Attached/Ready)%0A2.%20Skill%20-%20Enter%20Your%20Skill%0A3.%20Experience%20-%20Months%20or%20Years%0A%5BPlease%20guide%20me%20with%20next%20steps.%5D",
-                      "_blank"
-                    )
-                  }
+                  href="/register"
                 >
                   <i className="fa-solid fa-user-plus"></i> Join as UrbanCrew Member
-                </button>
-
+                </a>
               </div>
             </div>
           </div>
@@ -395,14 +407,13 @@ export default function Home() {
                   <i className="fa-solid fa-paper-plane" /> Submit Request
                 </button>
 
-                <a
+                <button
+                  type="button"
                   className="btn secondary"
-                  href="https://wa.me/919306512657?text=Hello%20UrbanCrew%20Team%20!"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  onClick={handleDashboardRedirect}
                 >
-                  <i className="fa-brands fa-whatsapp"></i> Chat with UrbanCrew Team
-                </a>
+                  <i className="fa-solid fa-arrow-right-to-bracket"></i> {currentUser ? 'Go to Dashboard' : 'Login to Get Started'}
+                </button>
               </div>
             </form>
 

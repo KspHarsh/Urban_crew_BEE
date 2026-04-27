@@ -17,9 +17,13 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: [true, 'Password is required'],
+        required: false, // Not required for Google OAuth users
         minlength: [6, 'Password must be at least 6 characters'],
         select: false // Don't include password in queries by default
+    },
+    googleId: {
+        type: String,
+        default: null
     },
     phone: {
         type: String,
@@ -40,8 +44,8 @@ const userSchema = new mongoose.Schema({
 
 // Hash password before saving
 userSchema.pre('save', async function (next) {
-    // Only hash if password is modified
-    if (!this.isModified('password')) {
+    // Only hash if password is modified (skip for Google OAuth users with no password)
+    if (!this.isModified('password') || !this.password) {
         return next();
     }
 

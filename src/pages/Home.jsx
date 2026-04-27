@@ -62,7 +62,7 @@ const contactHighlights = [
   { label: 'Response within 1 business hour', icon: 'fa-clock' },
   { label: 'Local teams with area familiarity', icon: 'fa-location-dot' },
   { label: 'Dedicated manager for every account', icon: 'fa-user-tie' },
-  { label: '24/7 WhatsApp support', icon: 'fa-headset' },
+  { label: '24/7 customer support', icon: 'fa-headset' },
 ];
 
 export default function Home() {
@@ -199,19 +199,12 @@ export default function Home() {
                 ))}
               </div>
               <div style={{ marginTop: 16 }}>
-               <button
-  type="button"
-  className="btn secondary"
-  onClick={() =>
-    window.open(
-      "https://wa.me/919306512657?text=Hello%20UrbanCrew%20Team%2C%0A%0AI%20want%20to%20join%20as%20UrbanCrew.%0A%0AMy%20Onboarding%20Details%3A%0A1.%20Submit%20Name%20%2B%20ID%20Proof%20-%20(Attached/Ready)%0A2.%20Skill%20-%20Enter%20Your%20Skill%0A3.%20Experience%20-%20Months%20or%20Years%0A%5BPlease%20guide%20me%20with%20next%20steps.%5D",
-      "_blank"
-    )
-  }
->
-  <i className="fa-solid fa-user-plus"></i> Join as UrbanCrew Member
-</button>
-
+                <a
+                  className="btn secondary"
+                  href="/register"
+                >
+                  <i className="fa-solid fa-user-plus"></i> Join as UrbanCrew Member
+                </a>
               </div>
             </div>
           </div>

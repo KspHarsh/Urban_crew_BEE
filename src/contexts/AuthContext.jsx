@@ -88,6 +88,13 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Login with Google OAuth (redirect-based)
+    // mode: 'login' (existing users only) or 'register' (create new user)
+    // role: 'client' or 'worker' (only used in register mode)
+    const loginWithGoogle = (mode = 'login', role = 'client') => {
+        window.location.href = `http://localhost:5000/api/auth/google?mode=${mode}&role=${role}`;
+    };
+
     // Logout user
     const logout = async () => {
         try {
@@ -182,6 +189,7 @@ export const AuthProvider = ({ children }) => {
         userRole,
         register,
         login,
+        loginWithGoogle,
         logout,
         resetPassword,
         hasRole,

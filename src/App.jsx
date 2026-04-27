@@ -9,6 +9,7 @@ import { ROLES } from './utils/constants';
 import LandingPage from './pages/public/LandingPage';
 import Login from './pages/public/Login';
 import Register from './pages/public/Register';
+import GoogleCallback from './pages/public/GoogleCallback';
 
 // Admin Dashboard Pages
 import AdminDashboard from './pages/dashboard/admin/AdminDashboard';
@@ -76,6 +77,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/auth/google/callback" element={<GoogleCallback />} />
 
           {/* Dashboard Redirect */}
           <Route path="/dashboard" element={<DashboardRedirect />} />
