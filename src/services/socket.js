@@ -6,7 +6,7 @@ import { io } from 'socket.io-client';
 // Connects to the Express backend's Socket.io server
 // for real-time updates (requests, assignments, etc.)
 
-const SOCKET_URL = 'http://localhost:5000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
 
 const socket = io(SOCKET_URL, {
     autoConnect: true,
